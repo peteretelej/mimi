@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -25,10 +26,6 @@ func main() {
 	)
 	flag.Parse()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	if kvStore == "" || kvCred == "" {
-		fmt.Println("missing KVSTORE and KVCRED, required.")
-		os.Exit(1)
-	}
 	myName := *myname
 	if myName == "" {
 		hostname, err := os.Hostname()
@@ -38,6 +35,21 @@ func main() {
 		}
 		myName = hostname
 	}
+	if kvStore == "" || kvCred == "" {
+		myIP, err := myIPString()
+		if err != nil {
+			fmt.Printf("unable to get IP Address: %v", err)
+			os.Exit(1)
+		}
+		defer fmt.Println("whoami: set KVSTORE and KVCRED env values to send to a kvstore")
+		if strings.Contains(myIP, ",") {
+			fmt.Printf("IPs: %s\n", myIP)
+			return
+		}
+		fmt.Printf("IP: %s\n", myIP)
+		return
+	}
+
 	fmt.Printf("launching whoami sender. Will check and send IP every %s\n", *interval)
 	senderDaemon(myName, *interval)
 }

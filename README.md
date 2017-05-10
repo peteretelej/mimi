@@ -26,6 +26,7 @@ export KVCRED=credential1
 ```
 whoami
 # checks if the ip has changed and submits the new one to the kvstore
+# If KVSTORE or KVCRED are not set, this will simply return the IP
 
 whoami -interval 1h 
 # specify custom check interval of 1hour (default 5minutes)
