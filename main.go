@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	KVSTORE = os.Getenv("KVSTORE")
-	KVCRED  = os.Getenv("KVCRED")
+	kvStore = os.Getenv("KVSTORE")
+	kvCred  = os.Getenv("KVCRED")
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 		myname   = flag.String("myname", "", "the name or hostname of machine, used as key")
 	)
 	flag.Parse()
-	if KVSTORE == "" || KVCRED == "" {
+	if kvStore == "" || kvCred == "" {
 		fmt.Println("missing KVSTORE and KVCRED, required.")
 		os.Exit(1)
 	}
@@ -90,12 +90,12 @@ func myIPString() (string, error) {
 }
 
 func sendIP(myName, myIP string) error {
-	u, err := url.Parse(KVSTORE)
+	u, err := url.Parse(kvStore)
 	if err != nil {
 		return err
 	}
 	q := u.Query()
-	q.Set("cred", KVCRED)
+	q.Set("cred", kvStore)
 	q.Add("k", myName)
 	q.Add("v", myIP)
 	u.RawQuery = q.Encode()
@@ -108,7 +108,9 @@ func sendIP(myName, myIP string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	dat, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
