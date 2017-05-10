@@ -38,7 +38,7 @@ func main() {
 	if kvStore == "" || kvCred == "" {
 		myIP, err := myIPString()
 		if err != nil {
-			fmt.Printf("unable to get IP Address: %v", err)
+			fmt.Printf("unable to get IP Address: %v\n", err)
 			os.Exit(1)
 		}
 		defer fmt.Println("whoami: set KVSTORE and KVCRED env values to send to a kvstore")
@@ -80,26 +80,20 @@ func myIPString() (string, error) {
 	if err != nil {
 		return "", errors.New("unable to find network interface addresses")
 	}
-	var theIP string
+	var ips []string
 	for _, addr := range addrs {
 		ipnet, ok := addr.(*net.IPNet)
 		if !ok || ipnet.IP.IsLoopback() {
 			continue
 		}
 		if ipnet.IP.To4() != nil {
-			ipString := ipnet.IP.String()
-			if theIP != "" {
-				theIP = fmt.Sprintf("%s,%s", theIP, ipString)
-			}
-			theIP = ipString
-			break
+			ips = append(ips, ipnet.IP.String())
 		}
 	}
-	if theIP == "" {
-		return "", errors.New("unable to find ip address")
+	if len(ips) == 0 {
+		return "", errors.New("no IPv4 addresses found")
 	}
-	return theIP, nil
-
+	return strings.Join(ips, ","), nil
 }
 
 func sendIP(myName, myIP string) error {
