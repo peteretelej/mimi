@@ -24,6 +24,7 @@ func main() {
 		myname   = flag.String("myname", "", "the name or hostname of machine, used as key")
 	)
 	flag.Parse()
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	if kvStore == "" || kvCred == "" {
 		fmt.Println("missing KVSTORE and KVCRED, required.")
 		os.Exit(1)
@@ -46,14 +47,14 @@ func senderDaemon(myName string, interval time.Duration) {
 		func() {
 			myIP, err := myIPString()
 			if err != nil {
-				log.Print("unable to get my ip")
+				log.Printf("unable to get my ip: %v", err)
 				return
 			}
 			if myIP == lastSent {
 				return
 			}
 			if err = sendIP(myName, myIP); err != nil {
-				log.Print("unable to send my ip")
+				log.Printf("unable to send my ip: %v", err)
 				return
 			}
 			lastSent = myIP
@@ -95,7 +96,7 @@ func sendIP(myName, myIP string) error {
 		return err
 	}
 	q := u.Query()
-	q.Set("cred", kvStore)
+	q.Set("cred", kvCred)
 	q.Add("k", myName)
 	q.Add("v", myIP)
 	u.RawQuery = q.Encode()
