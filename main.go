@@ -28,15 +28,17 @@ func main() {
 		fmt.Println("missing KVSTORE and KVCRED, required.")
 		os.Exit(1)
 	}
-	if *myname == "" {
+	myName := *myname
+	if myName == "" {
 		hostname, err := os.Hostname()
 		if err != nil {
 			fmt.Println("missing -myname and unable to generate os hostname")
 			os.Exit(1)
 		}
+		myName = hostname
 	}
 	fmt.Printf("launching whoami sender. Will check and send IP every %s\n", *interval)
-	senderDaemon(*myname, *interval)
+	senderDaemon(myName, *interval)
 }
 func senderDaemon(myName string, interval time.Duration) {
 	lastSent := ""
@@ -54,7 +56,8 @@ func senderDaemon(myName string, interval time.Duration) {
 				log.Print("unable to send my ip")
 				return
 			}
-			log.Printf("my IP updated onto kvstore: %s: %s", whoami, myIP)
+			lastSent = myIP
+			log.Printf("my IP updated onto kvstore: %s: %s", myName, myIP)
 		}()
 		time.Sleep(interval)
 	}
@@ -93,7 +96,7 @@ func sendIP(myName, myIP string) error {
 	}
 	q := u.Query()
 	q.Set("cred", KVCRED)
-	q.Add("k", whoami)
+	q.Add("k", myName)
 	q.Add("v", myIP)
 	u.RawQuery = q.Encode()
 	req, err := http.NewRequest("PUT", u.String(), nil)
