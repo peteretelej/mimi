@@ -21,7 +21,7 @@ var (
 
 func main() {
 	var (
-		interval = flag.Duration("interval", time.Minute*5, "interval to check whoami and send ip")
+		interval = flag.Duration("interval", time.Minute*5, "interval to check details and send to kvstore")
 		myname   = flag.String("myname", "", "the name or hostname of machine, used as key")
 	)
 	flag.Parse()
@@ -36,49 +36,47 @@ func main() {
 		myName = hostname
 	}
 	if kvStore == "" || kvCred == "" {
-		myIP, err := myIPString()
+		myIPs, err := myIPs()
 		if err != nil {
 			fmt.Printf("unable to get IP Address: %v\n", err)
 			os.Exit(1)
 		}
-		defer fmt.Println("whoami: set KVSTORE and KVCRED env values to send to a kvstore")
-		if strings.Contains(myIP, ",") {
-			fmt.Printf("IPs: %s\n", myIP)
-			return
+		for _, myIP := range myIPs {
+			fmt.Printf("IP: %s\n", myIP)
 		}
-		fmt.Printf("IP: %s\n", myIP)
 		return
 	}
 
-	fmt.Printf("launching whoami sender. Will check and send IP every %s\n", *interval)
+	fmt.Printf("launching mimi agent. Will check and send IP every %s\n", *interval)
 	senderDaemon(myName, *interval)
 }
 func senderDaemon(myName string, interval time.Duration) {
 	lastSent := ""
 	for {
 		func() {
-			myIP, err := myIPString()
+			ips, err := myIPs()
 			if err != nil {
 				log.Printf("unable to get my ip: %v", err)
 				return
 			}
-			if myIP == lastSent {
+			sending := strings.Join(ips, ",")
+			if sending == lastSent {
 				return
 			}
-			if err = sendIP(myName, myIP); err != nil {
+			if err = sendIPs(myName, ips); err != nil {
 				log.Printf("unable to send my ip: %v", err)
 				return
 			}
-			lastSent = myIP
-			log.Printf("my IP updated onto kvstore: %s: %s", myName, myIP)
+			lastSent = sending
+			log.Printf("my IP updated onto kvstore: %s: %s", myName, sending)
 		}()
 		time.Sleep(interval)
 	}
 }
-func myIPString() (string, error) {
+func myIPs() ([]string, error) {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return "", errors.New("unable to find network interface addresses")
+		return nil, errors.New("unable to find network interface addresses")
 	}
 	var ips []string
 	for _, addr := range addrs {
@@ -91,12 +89,12 @@ func myIPString() (string, error) {
 		}
 	}
 	if len(ips) == 0 {
-		return "", errors.New("no IPv4 addresses found")
+		return nil, errors.New("no IPv4 addresses found")
 	}
-	return strings.Join(ips, ","), nil
+	return ips, nil
 }
 
-func sendIP(myName, myIP string) error {
+func sendIPs(myName string, myIPs []string) error {
 	u, err := url.Parse(kvStore)
 	if err != nil {
 		return err
@@ -104,7 +102,7 @@ func sendIP(myName, myIP string) error {
 	q := u.Query()
 	q.Set("cred", kvCred)
 	q.Add("k", myName)
-	q.Add("v", myIP)
+	q.Add("v", strings.Join(myIPs, ","))
 	u.RawQuery = q.Encode()
 	req, err := http.NewRequest("PUT", u.String(), nil)
 	if err != nil {
